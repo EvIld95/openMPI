@@ -19,13 +19,16 @@ enum ProcesType {
     Auditor
 };
 
+
+
 int main(int argc, char** argv) {
     
     ProcesType procesType;
-    int numberOfAgents = 2;
-    int numberOfUniv = 1;
+    int numberOfAgents = 1;
+    int numberOfUniv = 2;
     int numberOfAudit = 1;
     int S = 100;
+    int A = 50;
     
     setbuf(stdout, NULL);
     // Initialize the MPI environment
@@ -56,7 +59,7 @@ int main(int argc, char** argv) {
     
     if(procesType == Agent) {
         
-        while(true) {
+        //while(true) {
             srand((unsigned int)time(NULL));
             int numberOfStudents = rand() % S + 1;
             for(int i = 0; i<numberOfUniv ; i++) {
@@ -71,15 +74,16 @@ int main(int argc, char** argv) {
             }
             
             
-        }
+        //}
         
     }
     else if(procesType == University) {
         
         char message[8];
-        
+        bool punished = false;
+        int currentStudentsInUniversity = 0;
         int totalStudents=0;
-        while(true) {
+        //while(true) {
             int receivedStudents;
             for(int i=0; i<numberOfAgents; i++) {
                 MPI_Recv(&receivedStudents, 1, MPI_INT, i, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
@@ -88,7 +92,60 @@ int main(int argc, char** argv) {
             }
             
             
-            sprintf(message, "%d:%d:", world_rank, S);
+            
+            //pierwszy uniwersytet
+            if(world_rank==numberOfAgents) {
+                if(punished && (totalStudents - A) >= 0) {
+                    currentStudentsInUniversity+=A;
+                    totalStudents-=A;
+                }
+                
+                MPI_Send(&totalStudents, 1, MPI_INT, world_rank+1, 4, MPI_COMM_WORLD);
+                printf("University a %d [PUNISHED]: Send availableStudent = %d to University %d\n", world_rank, totalStudents, world_rank+1);
+                
+                MPI_Recv(&totalStudents, 1, MPI_INT, numberOfAgents+numberOfUniv-1, 5, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+                printf("University d %d [PUNISHED]: Received availableStudent = %d from University %d\n", world_rank, totalStudents, numberOfAgents+numberOfUniv-1);
+            } else {
+                MPI_Recv(&totalStudents, 1, MPI_INT, world_rank - 1, 4, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+                printf("University b %d [PUNISHED]: Received availableStudent = %d from University %d\n", world_rank, totalStudents, world_rank-1);
+                if(punished && (totalStudents - A) >= 0) {
+                    currentStudentsInUniversity+=A;
+                    totalStudents-=A;
+                }
+                
+                
+                MPI_Send(&totalStudents, 1, MPI_INT, ((world_rank+2)%numberOfUniv) + numberOfAgents, 5, MPI_COMM_WORLD);
+                printf("University c %d [PUNISHED]: Send availableStudent = %d to University %d\n", world_rank, totalStudents, ((world_rank+2)%numberOfUniv + numberOfAgents));
+            }
+            
+            
+            
+            //druga tura dla niekaranych
+            
+            //pierwszy uniwersytet
+            if(world_rank==numberOfAgents) {
+                if(punished==false && (totalStudents - A) >= 0) {
+                    currentStudentsInUniversity+=A;
+                    totalStudents-=A;
+                }
+                MPI_Send(&totalStudents, 1, MPI_INT, world_rank+1, 6, MPI_COMM_WORLD);
+                printf("University %d [NOT PUNISHED]: Send availableStudent = %d to University %d\n", world_rank, totalStudents, world_rank+1);
+                MPI_Recv(&totalStudents, 1, MPI_INT, numberOfAgents+numberOfUniv-1, 7, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+                printf("University %d [NOT PUNISHED]: Received availableStudent = %d from University %d\n", world_rank, totalStudents, numberOfAgents+numberOfUniv-1);
+            } else {
+                MPI_Recv(&totalStudents, 1, MPI_INT, world_rank - 1, 6, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+                printf("University %d [NOT PUNISHED]: Received availableStudent = %d from University %d\n", world_rank, totalStudents, world_rank - 1);
+                if(punished==false && (totalStudents - A) >= 0) {
+                    currentStudentsInUniversity+=A;
+                    totalStudents-=A;
+                }
+                
+                
+                MPI_Send(&totalStudents, 1, MPI_INT, ((world_rank+2)%numberOfUniv) + numberOfAgents, 7, MPI_COMM_WORLD);
+                printf("University %d [NOT PUNISHED]: Send availableStudent = %d to University %d\n", world_rank, totalStudents, ((world_rank+2)%numberOfUniv + numberOfAgents));
+            }
+            
+            sprintf(message, "%d:%d:", world_rank, A-totalStudents);
             for(int i = 0; i<numberOfAgents ; i++) {
                 MPI_Send(message, 8, MPI_CHAR, i, 1, MPI_COMM_WORLD);
                 printf("University %d: Send message = %s to Agent %d\n", world_rank, message, i);
@@ -97,11 +154,12 @@ int main(int argc, char** argv) {
                 MPI_Send(message, 8, MPI_CHAR, numberOfAgents + numberOfUniv + i, 2, MPI_COMM_WORLD);
                 printf("University %d: Send message = %s to Auditor %d\n", world_rank, message, numberOfAgents + numberOfUniv + i);
             }
-        }
+            
+        //}
         
     } else if(procesType == Auditor) {
         
-        while(true) {
+       // while(true) {
             char message[numberOfUniv][8];
             for(int k = 0; k<numberOfUniv ; k++) {
                 MPI_Recv(message[k], 8, MPI_CHAR, MPI_ANY_SOURCE, 2, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
@@ -143,7 +201,7 @@ int main(int argc, char** argv) {
                 MPI_Send(&punish[i], 1, MPI_INT, numberOfAgents + i, 3, MPI_COMM_WORLD);
                 printf("Auditor %d: Send punish = %d to University %d\n", world_rank, punish[i], numberOfAgents + i);
             }
-        }
+       // }
         
     }
     
