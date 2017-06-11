@@ -28,7 +28,7 @@ enum ProcesType {
 int main(int argc, char** argv) {
     
     ProcesType procesType;
-    int numberOfAgents = 1;
+    int numberOfAgents = 2;
     int numberOfUniv = 2;
     int numberOfAudit = 1;
     int S = 200;
@@ -261,10 +261,10 @@ int main(int argc, char** argv) {
             
             for(int i=0; i<numberOfAudit ; i++) {
                 MPI_Recv(&receivedPunished, numberOfUniv, MPI_INT, numberOfAgents + numberOfUniv + i, 3, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-                printf("University %d: Received punished = %d from Auditor %d \n", world_rank, receivedPunished[numberOfAgents + world_rank - numberOfUniv], numberOfAgents + numberOfUniv + i);
+                printf("University %d: Received punished = %d from Auditor %d \n", world_rank, receivedPunished[world_rank - numberOfAgents], numberOfAgents + numberOfUniv + i);
             }
             receivedPunishedInformation = true;
-            punished = receivedPunished[numberOfAgents + world_rank - numberOfUniv];//receivedPunished[numberOfAgents + numberOfUniv - world_rank - 1];
+            punished = receivedPunished[world_rank - numberOfAgents];//receivedPunished[numberOfAgents + numberOfUniv - world_rank - 1];
         }
         
     } else if(procesType == Auditor) {
