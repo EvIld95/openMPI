@@ -141,8 +141,16 @@ int main(int argc, char** argv) {
                             numberOfUnivGetsStudents++;
                         }
                     }
-                    
-                    if((totalStudents - (world_rank - numberOfAgents + 1)*A) >= 0 ) {
+                    //printf("University %d TOTAL STUDENTS: %d")
+                
+                    bool canTake = false;
+                    for(int k=0; k<numberOfUnivGetsStudents; k++) {
+                        if(punishedUniv[k] == world_rank - numberOfAgents) {
+                            canTake = true;
+                        }
+                    }
+                
+                    if(canTake) {
                         currentStudentsInUniversity += A;
                         printf("University %d [PUNISHED]: Take students\n", world_rank);
                     } else {
@@ -301,11 +309,11 @@ int main(int argc, char** argv) {
                 
                 int idProc = atoi(token[0].c_str());
                 int studentToFill = atoi(token[1].c_str());
-                
+                printf("Auditor %d: Choose University %d with studentToFill %d\n",world_rank,idProc,studentToFill);
                 if(studentToFill != 0) {
-                    punish[numberOfAgents + numberOfUniv - idProc - 1] = 1;
+                    punish[idProc - numberOfAgents] = 1;
                 } else {
-                    punish[numberOfAgents + numberOfUniv - idProc - 1] = 0;
+                    punish[idProc - numberOfAgents] = 0;
                 }
             }
             
