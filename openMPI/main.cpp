@@ -29,9 +29,9 @@ int main(int argc, char** argv) {
     
     ProcesType procesType;
     int numberOfAgents = 2;
-    int numberOfUniv = 2;
+    int numberOfUniv = 4;
     int numberOfAudit = 1;
-    int S = 200;
+    int S = numberOfUniv*50;
     int A = 50;
     
     setbuf(stdout, NULL);
@@ -66,8 +66,8 @@ int main(int argc, char** argv) {
         while(true) {
             sleep(2);
             srand((unsigned int)time(NULL));
-            int numberOfStudents = rand() % (S/numberOfUniv) + 1;
-            printf("RAND %d", numberOfStudents);
+            int numberOfStudents = rand() % ((S-A)/numberOfUniv) + A;
+            printf("Agent %d: RAND Students:  %d\n", world_rank, numberOfStudents);
             //wysylamy tylko do pierwszego uniwersytetu
             for(int i = 0; i<numberOfUniv ; i++) { // i<numberOfUniv
                 MPI_Send(&numberOfStudents, 1, MPI_INT, numberOfAgents + i, 0, MPI_COMM_WORLD);
@@ -144,14 +144,17 @@ int main(int argc, char** argv) {
                     
                     if((totalStudents - (world_rank - numberOfAgents + 1)*A) >= 0 ) {
                         currentStudentsInUniversity += A;
+                        printf("University %d [PUNISHED]: Take students\n", world_rank);
+                    } else {
+                        printf("University %d [PUNISHED]: Cant take students\n", world_rank);
                     }
                     
                     
                     
                     totalStudents -= (numberOfUnivGetsStudents * A);
-                    printf("University %d [PUNISHED]: == %d\n", world_rank, punishedUniv[0] + numberOfAgents);
+                
                     if(world_rank == punishedUniv[0] + numberOfAgents) {
-                        printf("University %d [PUNISHED]: SENDING\n", world_rank);
+                       
                         for (int i = 0; i<numberOfUniv-numberOfPunishedUniv; i++) {
                             MPI_Send(&totalStudents, 1, MPI_INT, numberOfAgents + notPunishedUniv[i], 10, MPI_COMM_WORLD);
                             printf("University %d [PUNISHED]: Send availableStudent = %d to University %d\n", world_rank, totalStudents, numberOfAgents + notPunishedUniv[i]);
