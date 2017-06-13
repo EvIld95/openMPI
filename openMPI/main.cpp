@@ -14,14 +14,25 @@
 #include <ctime>
 #include <string.h>
 #include <unistd.h>
+#include "time.h"
 
 using namespace std;
+
+long int unix_timestamp()
+{
+    time_t t = std::time(0);
+    long int now = static_cast<long int> (t);
+    return now;
+}
+
 
 enum ProcesType {
     Agent,
     University,
     Auditor
 };
+
+
 
 
 
@@ -33,7 +44,7 @@ int main(int argc, char** argv) {
     int numberOfAudit = 1;
     int S = numberOfUniv*50;
     int A = 50;
-    
+    struct timespec gettime_now;
     setbuf(stdout, NULL);
     // Initialize the MPI environment
     MPI_Init(NULL, NULL);
@@ -65,19 +76,22 @@ int main(int argc, char** argv) {
         
         while(true) {
             sleep(2);
+            
             srand((unsigned int)time(NULL));
             int numberOfStudents = rand() % ((S-A)/numberOfUniv) + A;
-            printf("Agent %d: RAND Students:  %d\n", world_rank, numberOfStudents);
+            clock_gettime(CLOCK_REALTIME, &gettime_now);
+            printf("%ld Agent %d: RAND Students:  %d\n", gettime_now.tv_nsec, world_rank, numberOfStudents);
             //wysylamy tylko do pierwszego uniwersytetu
             for(int i = 0; i<numberOfUniv ; i++) { // i<numberOfUniv
                 MPI_Send(&numberOfStudents, 1, MPI_INT, numberOfAgents + i, 0, MPI_COMM_WORLD);
-                printf("Agent %d: Sent numberOfStudent = %d to University %d\n", world_rank, numberOfStudents, numberOfAgents + i);
+                clock_gettime(CLOCK_REALTIME, &gettime_now);
+                printf("%ld Agent %d: Sent numberOfStudent = %d to University %d\n",gettime_now.tv_nsec, world_rank, numberOfStudents, numberOfAgents + i);
             }
             
             char message[numberOfUniv][8];
             for(int k = 0; k<numberOfUniv ; k++) {
                 MPI_Recv(message[k], 8, MPI_CHAR, MPI_ANY_SOURCE, 1, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-                printf("Agent %d: Received message = %s from University\n", world_rank, message[k]);
+                //printf("Agent %d: Received message = %s from University\n", world_rank, message[k]);
             }
             
         }
@@ -97,13 +111,13 @@ int main(int argc, char** argv) {
             int receivedStudents;
         
         
-            //if(world_rank==numberOfAgents) {
-                for(int i=0; i<numberOfAgents; i++) {
-                    MPI_Recv(&receivedStudents, 1, MPI_INT, i, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-                    printf("University %d: Received students = %d from Agent %d\n", world_rank, receivedStudents,i);
-                    totalStudents+=receivedStudents;
-                }
-            //}
+            for(int i=0; i<numberOfAgents; i++) {
+                MPI_Recv(&receivedStudents, 1, MPI_INT, i, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+                clock_gettime(CLOCK_REALTIME, &gettime_now);
+                printf("%ld University %d: Received students = %d from Agent %d\n", gettime_now.tv_nsec, world_rank, receivedStudents,i);
+                totalStudents+=receivedStudents;
+            }
+         
         
             
             int numberOfPunishedUniv = 0;
@@ -124,7 +138,7 @@ int main(int argc, char** argv) {
                     int counter = 0;
                     int counter2 = 0;
                     for(int k=0; k<numberOfUniv ;k++) {
-                        printf("RECEIVED PUNISHED: [%d] = %d\n",k,receivedPunished[k]);
+                        //printf("RECEIVED PUNISHED: [%d] = %d\n",k,receivedPunished[k]);
                         if(receivedPunished[k] == 1) {
                             punishedUniv[counter] = k;
                             counter++;
@@ -141,7 +155,7 @@ int main(int argc, char** argv) {
                             numberOfUnivGetsStudents++;
                         }
                     }
-                    //printf("University %d TOTAL STUDENTS: %d")
+                
                 
                     bool canTake = false;
                     for(int k=0; k<numberOfUnivGetsStudents; k++) {
@@ -152,9 +166,11 @@ int main(int argc, char** argv) {
                 
                     if(canTake) {
                         currentStudentsInUniversity += A;
-                        printf("University %d [PUNISHED]: Take students\n", world_rank);
+                        clock_gettime(CLOCK_REALTIME, &gettime_now);
+                        printf("%ld University %d [PUNISHED]: Take %d students\n",gettime_now.tv_nsec, world_rank, A);
                     } else {
-                        printf("University %d [PUNISHED]: Cant take students\n", world_rank);
+                        clock_gettime(CLOCK_REALTIME, &gettime_now);
+                        printf("%ld University %d [PUNISHED]: Cant take students\n",gettime_now.tv_nsec, world_rank);
                     }
                     
                     
@@ -165,20 +181,23 @@ int main(int argc, char** argv) {
                        
                         for (int i = 0; i<numberOfUniv-numberOfPunishedUniv; i++) {
                             MPI_Send(&totalStudents, 1, MPI_INT, numberOfAgents + notPunishedUniv[i], 10, MPI_COMM_WORLD);
-                            printf("University %d [PUNISHED]: Send availableStudent = %d to University %d\n", world_rank, totalStudents, numberOfAgents + notPunishedUniv[i]);
+                            clock_gettime(CLOCK_REALTIME, &gettime_now);
+                            printf("%ld University %d [PUNISHED]: Send availableStudent = %d to University %d\n",gettime_now.tv_nsec, world_rank, totalStudents, numberOfAgents + notPunishedUniv[i]);
                         }
                     }
                 
             }
             else {
                 if(receivedPunishedInformation == true && numberOfPunishedUniv > 0) {
-                    printf("University %d [NOT PUNISHED]: WAITING FOR UNLOCK\n", world_rank);
+                    //printf("University %d [NOT PUNISHED]: WAITING FOR UNLOCK\n", world_rank);
                     MPI_Recv(&totalStudents, 1, MPI_INT, MPI_ANY_SOURCE, 10, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-                    printf("University %d [NOT PUNISHED]: Received availableStudent = %d from University\n", world_rank, totalStudents);
+                    clock_gettime(CLOCK_REALTIME, &gettime_now);
+                    printf("%ld University %d [NOT PUNISHED]: Received availableStudent = %d from University\n",gettime_now.tv_nsec, world_rank, totalStudents);
                 }
                 
                 if((totalStudents - (world_rank - numberOfAgents + 1)*A) >= 0 ) {
-                    printf("University %d [NOT PUNISHED]: Take students\n",world_rank);
+                    clock_gettime(CLOCK_REALTIME, &gettime_now);
+                    printf("%ld University %d [NOT PUNISHED]: Take %d students\n",gettime_now.tv_nsec,world_rank, A);
                     currentStudentsInUniversity += A;
                 }
             }
@@ -261,18 +280,21 @@ int main(int argc, char** argv) {
             sprintf(message, "%d:%d:", world_rank, A-currentStudentsInUniversity);
             for(int i = 0; i<numberOfAgents ; i++) {
                 MPI_Send(message, 8, MPI_CHAR, i, 1, MPI_COMM_WORLD);
-                printf("University %d: Send message = %s to Agent %d\n", world_rank, message, i);
+                clock_gettime(CLOCK_REALTIME, &gettime_now);
+                printf("%ld University %d: Send message = %s to Agent %d\n",gettime_now.tv_nsec, world_rank, message, i);
             }
             for(int i = 0; i<numberOfAudit ; i++) {
                 MPI_Send(message, 8, MPI_CHAR, numberOfAgents + numberOfUniv + i, 2, MPI_COMM_WORLD);
-                printf("University %d: Send message = %s to Auditor %d\n", world_rank, message, numberOfAgents + numberOfUniv + i);
+                clock_gettime(CLOCK_REALTIME, &gettime_now);
+                printf("%ld University %d: Send message = %s to Auditor %d\n",gettime_now.tv_nsec, world_rank, message, numberOfAgents + numberOfUniv + i);
             }
             
             
             
             for(int i=0; i<numberOfAudit ; i++) {
                 MPI_Recv(&receivedPunished, numberOfUniv, MPI_INT, numberOfAgents + numberOfUniv + i, 3, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-                printf("University %d: Received punished = %d from Auditor %d \n", world_rank, receivedPunished[world_rank - numberOfAgents], numberOfAgents + numberOfUniv + i);
+                clock_gettime(CLOCK_REALTIME, &gettime_now);
+                printf("%ld University %d: Received punished = %d from Auditor %d \n",gettime_now.tv_nsec, world_rank, receivedPunished[world_rank - numberOfAgents], numberOfAgents + numberOfUniv + i);
             }
             receivedPunishedInformation = true;
             punished = receivedPunished[world_rank - numberOfAgents];//receivedPunished[numberOfAgents + numberOfUniv - world_rank - 1];
@@ -284,7 +306,8 @@ int main(int argc, char** argv) {
             char message[numberOfUniv][8];
             for(int k = 0; k<numberOfUniv ; k++) {
                 MPI_Recv(message[k], 8, MPI_CHAR, MPI_ANY_SOURCE, 2, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-                printf("Auditor %d: Received message = %s from University\n", world_rank, message[k]);
+                clock_gettime(CLOCK_REALTIME, &gettime_now);
+                printf("%ld Auditor %d: Received message = %s from University\n",gettime_now.tv_nsec, world_rank, message[k]);
             }
             int punish[numberOfUniv] ;
             for(int i =0 ; i< numberOfUniv ; i++) {
@@ -309,7 +332,8 @@ int main(int argc, char** argv) {
                 
                 int idProc = atoi(token[0].c_str());
                 int studentToFill = atoi(token[1].c_str());
-                printf("Auditor %d: Choose University %d with studentToFill %d\n",world_rank,idProc,studentToFill);
+                clock_gettime(CLOCK_REALTIME, &gettime_now);
+                printf("%ld Auditor %d: Choose University %d with studentToFill %d\n",gettime_now.tv_nsec, world_rank,idProc,studentToFill);
                 if(studentToFill != 0) {
                     punish[idProc - numberOfAgents] = 1;
                 } else {
@@ -319,7 +343,8 @@ int main(int argc, char** argv) {
             
             for(int i = 0 ;i< numberOfUniv; i++) {
                 MPI_Send(&punish, numberOfUniv, MPI_INT, numberOfAgents + i, 3, MPI_COMM_WORLD);
-                printf("Auditor %d: Send punish = %d to University %d\n", world_rank, punish[i], numberOfAgents + i);
+                clock_gettime(CLOCK_REALTIME, &gettime_now);
+                printf("%ld Auditor %d: Send punish = %d to University %d\n",gettime_now.tv_nsec, world_rank, punish[i], numberOfAgents + i);
             }
         }
         
